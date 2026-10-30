@@ -1,0 +1,19 @@
+{
+  "name": "vibetube",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": ["apps/web", "apps/api"],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace @vibetube/api\" \"npm run dev --workspace @vibetube/web\"",
+    "dev:web": "npm run dev --workspace @vibetube/web",
+    "dev:api": "npm run dev --workspace @vibetube/api",
+    "db:generate": "npm run db:generate --workspace @vibetube/api",
+    "db:push": "npm run db:push --workspace @vibetube/api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "overrides": {
+    "postcss": "8.5.23"
+  }
+}

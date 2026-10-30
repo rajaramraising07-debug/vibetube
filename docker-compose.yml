@@ -1,0 +1,31 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: vibetube-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vibetube
+      POSTGRES_PASSWORD: vibetube_dev_password
+      POSTGRES_DB: vibetube
+    ports:
+      - "5432:5432"
+    volumes:
+      - vibetube_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vibetube -d vibetube"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: vibetube-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - vibetube_redis:/data
+
+volumes:
+  vibetube_postgres:
+  vibetube_redis:
