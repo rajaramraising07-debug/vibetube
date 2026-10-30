@@ -18,6 +18,8 @@ type Video = {
   duration: string;
   emoji: string;
   theme: string;
+  thumbnailUrl?: string;
+  externalUrl?: string;
 };
 
 const demoVideos: Video[] = [
@@ -31,7 +33,7 @@ const demoVideos: Video[] = [
   { id: "8", title: "A collection of sounds for slow mornings", creator: "Sunday Stereo", views: "980K views", age: "6 days ago", category: "Music", duration: "32:15", emoji: "🎵", theme: "pink" }
 ];
 
-const categories = ["All", "Music", "Gaming", "Technology", "Education", "Lifestyle"];
+const categories = ["All", "Adult", "Music", "Gaming", "Technology", "Education", "Lifestyle"];
 
 export default function HomePage() {
   const [query, setQuery] = useState("");
@@ -41,13 +43,13 @@ export default function HomePage() {
   const [loadingVideos, setLoadingVideos] = useState(true);
 
   useEffect(() => {
-    fetch("/api/videos", { credentials: "include" })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("Could not load videos");
-        return response.json();
-      })
-      .then((result) => {
-        const liveVideos: Video[] = (result.videos || []).map((v: any) => ({
+    Promise.allSettled([
+      fetch("/api/videos", { credentials: "include" }).then((response) => response.ok ? response.json() : { videos: [] }),
+      fetch("/api/external-videos", { credentials: "include" }).then((response) => response.ok ? response.json() : { videos: [] })
+    ]).then(([savedResult, externalResult]) => {
+        const saved = savedResult.status === "fulfilled" ? savedResult.value.videos || [] : [];
+        const external = externalResult.status === "fulfilled" ? externalResult.value.videos || [] : [];
+        const liveVideos: Video[] = saved.map((v: any) => ({
           id: v.id,
           title: v.title,
           creator: v.creator?.displayName || v.creator?.username || "VibeTube Creator",
@@ -58,7 +60,20 @@ export default function HomePage() {
           emoji: "▶",
           theme: "blue"
         }));
-        if (liveVideos.length) setVideos(liveVideos);
+        const externalVideos: Video[] = external.map((v: any) => ({
+          id: v.id,
+          title: v.title,
+          creator: v.creator || "Eporner",
+          views: `${Number(v.views || 0).toLocaleString()} views`,
+          age: "External",
+          category: "Adult",
+          duration: `${Math.floor(Number(v.duration || 0) / 60)}:${String(Number(v.duration || 0) % 60).padStart(2, "0")}`,
+          emoji: "▶",
+          theme: "pink",
+          thumbnailUrl: v.thumbnailUrl,
+          externalUrl: v.externalUrl
+        }));
+        if (liveVideos.length || externalVideos.length) setVideos([...liveVideos, ...externalVideos]);
       })
       .catch(() => {})
       .finally(() => setLoadingVideos(false));
@@ -149,15 +164,15 @@ export default function HomePage() {
             <div className="video-grid">
               {filtered.map((video) => (
                 <article className="video-card" key={video.id}>
-                  <Link href={`/watch/${video.id}`} className={`thumbnail thumb-${video.theme}`}>
+                  <a href={video.externalUrl || `/watch/${video.id}`} target={video.externalUrl ? "_blank" : undefined} rel={video.externalUrl ? "noopener noreferrer nofollow" : undefined} className={`thumbnail thumb-${video.theme}`} style={video.thumbnailUrl ? { backgroundImage: `linear-gradient(#0001,#0004), url("${video.thumbnailUrl}")` } : undefined}>
                     <span className="thumb-emoji">{video.emoji}</span>
                     <span className="play-hover"><Play size={21} fill="white" /></span>
                     <span className="duration">{video.duration}</span>
-                  </Link>
+                  </a>
                   <div className="video-meta">
                     <div className="creator-avatar">{video.creator.slice(0, 1)}</div>
                     <div className="video-copy">
-                      <Link href={`/watch/${video.id}`} className="video-title">{video.title}</Link>
+                      <a href={video.externalUrl || `/watch/${video.id}`} target={video.externalUrl ? "_blank" : undefined} rel={video.externalUrl ? "noopener noreferrer nofollow" : undefined} className="video-title">{video.title}</a>
                       <p>{video.creator}</p><small>{video.views} · {video.age}</small>
                     </div>
                     <button className="more-btn" aria-label={`More options for ${video.title}`}>⋮</button>

@@ -3,6 +3,7 @@ services:
     name: vibetube-api
     runtime: node
     plan: free
+    region: singapore
     rootDir: apps/api
     buildCommand: npm install && npx prisma generate && npm run build
     startCommand: npm start
@@ -25,4 +26,16 @@ services:
       - key: R2_BUCKET_NAME
         sync: false
       - key: R2_PUBLIC_BASE_URL
+        sync: false
+  - type: web
+    name: vibetube-web
+    runtime: node
+    plan: free
+    region: singapore
+    rootDir: apps/web
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /age-check
+    envVars:
+      - key: API_INTERNAL_URL
         sync: false

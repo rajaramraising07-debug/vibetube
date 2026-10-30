@@ -2,7 +2,10 @@
   "name": "vibetube",
   "private": true,
   "version": "0.1.0",
-  "workspaces": ["apps/web", "apps/api"],
+  "workspaces": [
+    "apps/web",
+    "apps/api"
+  ],
   "scripts": {
     "dev": "concurrently \"npm run dev --workspace @vibetube/api\" \"npm run dev --workspace @vibetube/web\"",
     "dev:web": "npm run dev --workspace @vibetube/web",
@@ -15,5 +18,9 @@
   },
   "overrides": {
     "postcss": "8.5.23"
+  },
+  "dependencies": {
+    "@neon/config": "^1.9.6",
+    "@neon/env": "^1.6.6"
   }
 }

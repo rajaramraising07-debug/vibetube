@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { config as loadRootEnv } from "dotenv";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -9,6 +10,12 @@ import authRouter from "./routes/auth.js";
 import videosRouter from "./routes/videos.js";
 import uploadsRouter from "./routes/uploads.js";
 import socialRouter from "./routes/social.js";
+import externalVideosRouter from "./routes/external-videos.js";
+
+// Keep API-specific secrets in apps/api/.env, while using the root Neon URL
+// when one is configured. Deployment platforms can still inject DATABASE_URL.
+const rootEnv = loadRootEnv({ path: "../../.env", processEnv: {} }).parsed;
+if (rootEnv?.DATABASE_URL) process.env.DATABASE_URL = rootEnv.DATABASE_URL;
 
 const app = express();
 const port = Number(process.env.PORT || process.env.API_PORT || 4000);
@@ -27,6 +34,7 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/age", ageRouter);
 app.use("/api", requireAgeVerified);
 app.use("/api/auth", authRouter);
+app.use("/api/external-videos", externalVideosRouter);
 app.use("/api/videos", videosRouter);
 app.use("/api/uploads", uploadsRouter);
 app.use("/api", socialRouter);

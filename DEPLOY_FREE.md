@@ -1,15 +1,15 @@
 # VibeTube — Free-tier deployment guide
 
-This project is prepared for a no-custom-domain launch using:
-- Vercel Hobby for Next.js
+This project is prepared for a no-custom-domain preview using:
+- Render Free Web Service for Next.js
 - Render Free Web Service for Express API (cold starts and ephemeral local disk)
 - Neon Free for PostgreSQL
 - Cloudflare R2 free monthly allowance for video object storage
 
 ## Important free-tier constraints
 
-- Vercel Hobby is intended for personal, non-commercial use. Do not use it for a commercial monetized service without checking/upgrading the plan.
-- Render free API services sleep after 15 minutes idle and can take around one minute to wake up. They have ephemeral disks; all user videos must be stored in R2, never on the Render filesystem.
+- Render Free services sleep after 15 minutes idle and can take around one minute to wake up. They have ephemeral disks; all user videos must be stored in R2, never on the Render filesystem.
+- Render says Free instances are for previews and hobby projects, not production applications. Use paid instances for a production launch.
 - Neon free databases scale to zero and have storage/compute/network quotas.
 - R2's free monthly allowance currently includes 10 GB-month standard storage, 1 million Class A operations and 10 million Class B operations, with no egress charge. Usage beyond the free allowance is billable if billing is enabled.
 - This project stores original MP4/WebM/MOV files and uses browser playback. It does not transcode videos, generate HLS renditions or provide DRM. Large videos and many viewers will exceed a hobby setup's practical capacity.
@@ -30,7 +30,7 @@ This project is prepared for a no-custom-domain launch using:
 3. Create an R2 API token with Object Read & Write for this bucket.
 4. Copy Account ID, Access Key ID and Secret Access Key.
 5. For public playback, connect a public custom domain (requires owning a domain) or enable the R2.dev public development URL if offered for your account/bucket. Copy the public base URL into `R2_PUBLIC_BASE_URL`.
-6. Configure bucket CORS to allow `PUT` from your Vercel deployment URL and the local frontend origin (`http://localhost:3000` by default, or `http://localhost:3001` if you start it on port 3001), allow header `Content-Type`, and expose `ETag`.
+6. Configure bucket CORS to allow `PUT` from your Render frontend URL and the local frontend origin (`http://localhost:3000` by default, or `http://localhost:3001` if you start it on port 3001), allow header `Content-Type`, and expose `ETag`.
 7. Never place R2 secret keys in the frontend. They belong only in the API environment.
 
 Example R2 CORS policy (replace origins with your actual origins):
@@ -38,7 +38,7 @@ Example R2 CORS policy (replace origins with your actual origins):
 ```json
 [
   {
-    "AllowedOrigins": ["http://localhost:3000", "http://localhost:3001", "https://YOUR-PROJECT.vercel.app"],
+    "AllowedOrigins": ["http://localhost:3000", "http://localhost:3001", "https://YOUR-FRONTEND.onrender.com"],
     "AllowedMethods": ["GET", "HEAD", "PUT"],
     "AllowedHeaders": ["Content-Type"],
     "ExposeHeaders": ["ETag"],
@@ -47,34 +47,23 @@ Example R2 CORS policy (replace origins with your actual origins):
 ]
 ```
 
-## C. Deploy Express API to Render
+## C. Deploy the API and frontend to Render
 
 1. Push this project to a GitHub repository.
-2. In Render, create a new Blueprint and connect the repository; Render reads `render.yaml`.
-   If Render's Blueprint parser does not accept the monorepo root, create a Web Service manually with Root Directory `apps/api`, Build Command `npm install && npx prisma generate && npm run build`, and Start Command `npm start`.
-   Use Node.js 20.19 or later (Node.js 22 LTS recommended); Prisma 7 requires Node.js 20.19+.
+2. In Render, create a new Blueprint and connect the repository; Render reads `render.yaml` and defines both services in Singapore.
 3. Set the API environment variables:
-   - `DATABASE_URL`: Neon connection string
-   - `WEB_ORIGIN`: `https://YOUR-PROJECT.vercel.app`
+   - `DATABASE_URL`: Neon pooled connection string for app traffic
+   - `WEB_ORIGIN`: exact `https://YOUR-FRONTEND.onrender.com` URL Render assigns
    - `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`
    - `R2_BUCKET_NAME`, `R2_PUBLIC_BASE_URL`
    - `JWT_SECRET`: use a unique random value of 32+ characters
-4. Deploy. Copy the Render service URL, e.g. `https://vibetube-api.onrender.com`.
-5. Check `https://YOUR-API.onrender.com/api/health`.
+4. Set the frontend environment variable `API_INTERNAL_URL` to the exact public API URL, such as `https://vibetube-api.onrender.com`.
+5. Deploy both services. Check `https://YOUR-API.onrender.com/api/health` and open the frontend service URL.
+6. Add the exact frontend URL to the R2 bucket CORS `AllowedOrigins`.
 
-## D. Deploy Next.js to Vercel
+## D. Prisma schema
 
-1. Import the same GitHub repository into Vercel.
-2. Set Root Directory to `apps/web`.
-3. Add environment variable:
-   - `API_INTERNAL_URL=https://YOUR-API.onrender.com`
-4. Deploy. Vercel assigns a `*.vercel.app` URL.
-5. Update Render's `WEB_ORIGIN` to that exact Vercel URL and redeploy the API.
-6. Add that exact URL to the R2 bucket CORS `AllowedOrigins`.
-
-## E. Initialize Prisma schema
-
-Run locally with the production Neon connection string in `apps/api/.env`:
+The Neon `production` branch schema has already been synchronized. For future schema changes, use a direct Neon connection string locally:
 
 ```bash
 cd apps/api
@@ -84,9 +73,9 @@ npx prisma db push
 
 For a production team workflow, use reviewed migrations (`prisma migrate deploy`) rather than relying on `db push` for schema changes.
 
-## F. Verify
+## E. Verify
 
-- Open the Vercel URL.
+- Open the Render frontend URL.
 - Register an account.
 - Open Creator Studio.
 - Upload a small MP4.
