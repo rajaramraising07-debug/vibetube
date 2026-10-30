@@ -63,6 +63,21 @@ export default function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [videos, setVideos] = useState<Video[]>(demoVideos);
   const [loadingVideos, setLoadingVideos] = useState(true);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+
+  const searchSuggestions = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    const categories = epornerCategoryGroups.flatMap((group) => group.items).filter((item) => !term || item.toLowerCase().includes(term));
+    const titles = videos.filter((video) => video.externalUrl && term && video.title.toLowerCase().includes(term)).map((video) => video.title);
+    return [...new Set([...titles, ...categories])].slice(0, 7);
+  }, [query, videos]);
+
+  function chooseSuggestion(value: string) {
+    setQuery(value);
+    setSearchTerm(value.trim());
+    setPage(1);
+    setSuggestionsOpen(false);
+  }
 
   function exploreVideos(nextCategory = "All") {
     setCategory(nextCategory);
@@ -161,11 +176,17 @@ export default function HomePage() {
           </Link>
         </div>
 
-        <label className="searchbar">
-          <Search size={18} />
-          <input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="Search Eporner videos..." />
-          {query && <button onClick={() => setQuery("")} aria-label="Clear search"><X size={16} /></button>}
-        </label>
+        <div className="searchbox">
+          <label className="searchbar">
+            <Search size={18} />
+            <input value={query} onFocus={() => setSuggestionsOpen(true)} onChange={(event) => { setQuery(event.target.value); setPage(1); setSuggestionsOpen(true); }} onKeyDown={(event) => { if(event.key === "Enter") { setSearchTerm(query.trim()); setSuggestionsOpen(false); } if(event.key === "Escape") setSuggestionsOpen(false); }} placeholder="Search Eporner videos..." aria-label="Search Eporner videos" aria-expanded={suggestionsOpen} aria-controls="search-suggestions" />
+            {query && <button type="button" onClick={() => {setQuery("");setSearchTerm("");}} aria-label="Clear search"><X size={16} /></button>}
+          </label>
+          {suggestionsOpen && (query.trim() || searchSuggestions.length > 0) && <div className="search-suggestions" id="search-suggestions" role="listbox" aria-label="Search suggestions">
+            {query.trim() && <button type="button" role="option" onMouseDown={(event) => event.preventDefault()} onClick={() => chooseSuggestion(query.trim())}><Search size={15}/> Search Eporner for “{query.trim()}”</button>}
+            {searchSuggestions.map((suggestion) => <button type="button" role="option" key={suggestion} onMouseDown={(event) => event.preventDefault()} onClick={() => chooseSuggestion(suggestion)}><Search size={14}/> {suggestion}</button>)}
+          </div>}
+        </div>
 
         <div className="top-actions">
           <Link className="create-btn" href="/studio"><Plus size={18} /> <span>Create</span></Link>

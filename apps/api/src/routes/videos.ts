@@ -85,6 +85,19 @@ router.post("/:id/like", requireAuth, async (req: AuthRequest, res, next) => {
   } catch (error) { next(error); }
 });
 
+router.get("/:id/like", requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    const videoId = req.params.id as string;
+    const video = await prisma.video.findFirst({ where: { id: videoId, ...watchableVideoWhere }, select: { id: true } });
+    if (!video) return res.status(404).json({ error: "Video not found." });
+    const [reaction, likes] = await Promise.all([
+      prisma.like.findUnique({ where: { userId_videoId: { userId: req.userId!, videoId } }, select: { id: true } }),
+      prisma.like.count({ where: { videoId } })
+    ]);
+    res.json({ liked: Boolean(reaction), likes });
+  } catch (error) { next(error); }
+});
+
 router.get("/:id/comments", async (req, res, next) => {
   try {
     const videoId = req.params.id as string;
