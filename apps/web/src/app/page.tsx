@@ -1,11 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   Bell, Compass, Flame, Gamepad2, Home, Menu, Music2, Play,
-  Plus, Search, Sparkles, X, Clapperboard, GraduationCap
+  Plus, Search, Sparkles, X, GraduationCap
 } from "lucide-react";
 
 type Video = {
@@ -33,7 +32,7 @@ const demoVideos: Video[] = [
   { id: "8", title: "A collection of sounds for slow mornings", creator: "Sunday Stereo", views: "980K views", age: "6 days ago", category: "Music", duration: "32:15", emoji: "🎵", theme: "pink" }
 ];
 
-const categories = ["All", "Adult", "Music", "Gaming", "Technology", "Education", "Lifestyle"];
+const categories = ["All", "Eporner", "Music", "Gaming", "Technology", "Education", "Lifestyle"];
 
 export default function HomePage() {
   const [query, setQuery] = useState("");
@@ -41,6 +40,15 @@ export default function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [videos, setVideos] = useState<Video[]>(demoVideos);
   const [loadingVideos, setLoadingVideos] = useState(true);
+
+  function exploreVideos(nextCategory = "All") {
+    setCategory(nextCategory);
+    setQuery("");
+    setMenuOpen(false);
+    window.requestAnimationFrame(() => {
+      document.getElementById("videos")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
 
   useEffect(() => {
     Promise.allSettled([
@@ -80,7 +88,7 @@ export default function HomePage() {
   }, []);
 
   const filtered = useMemo(() => videos.filter((video) => {
-    const matchesCategory = category === "All" || video.category === category;
+    const matchesCategory = category === "All" || (category === "Eporner" ? Boolean(video.externalUrl) : video.category === category);
     const haystack = `${video.title} ${video.creator} ${video.category}`.toLowerCase();
     return matchesCategory && haystack.includes(query.toLowerCase());
   }), [category, query, videos]);
@@ -93,7 +101,7 @@ export default function HomePage() {
             {menuOpen ? <X size={21} /> : <Menu size={21} />}
           </button>
           <Link href="/" className="brand">
-            <span className="brand-mark"><Image src="/vibetube-logo.jpg" alt="VibeTube peach logo" width={42} height={42} priority /></span>
+            <span className="brand-mark" aria-hidden="true"><Play size={21} fill="currentColor" /></span>
             <span className="brand-word">vibe<span>tube</span></span>
           </Link>
         </div>
@@ -115,14 +123,14 @@ export default function HomePage() {
         <aside className={`sidebar ${menuOpen ? "sidebar-open" : ""}`}>
           <nav className="side-nav">
             <Link className="side-link active" href="/"><Home size={19} /> Home</Link>
-            <button className="side-link" onClick={() => setCategory("All")}><Compass size={19} /> Explore</button>
-            <button className="side-link" onClick={() => setCategory("Music")}><Clapperboard size={19} /> Vibe Shorts</button>
+            <button className="side-link" onClick={() => exploreVideos()}><Compass size={19} /> Explore</button>
+            <button className={`side-link ${category === "Eporner" ? "active" : ""}`} onClick={() => exploreVideos("Eporner")}><Play size={19} /> Eporner</button>
           </nav>
           <div className="side-divider" />
-          <p className="side-label">EXPLORE VIBES</p>
-          <button className="side-link" onClick={() => setCategory("Music")}><Music2 size={19} /> Music</button>
-          <button className="side-link" onClick={() => setCategory("Gaming")}><Gamepad2 size={19} /> Gaming</button>
-          <button className="side-link" onClick={() => setCategory("Education")}><GraduationCap size={19} /> Learning</button>
+          <p className="side-label">CATEGORIES</p>
+          <button className={`side-link ${category === "Music" ? "active" : ""}`} onClick={() => exploreVideos("Music")}><Music2 size={19} /> Music</button>
+          <button className={`side-link ${category === "Gaming" ? "active" : ""}`} onClick={() => exploreVideos("Gaming")}><Gamepad2 size={19} /> Gaming</button>
+          <button className={`side-link ${category === "Education" ? "active" : ""}`} onClick={() => exploreVideos("Education")}><GraduationCap size={19} /> Learning</button>
           <div className="sidebar-note">
             <Sparkles size={20} />
             <strong>Find your vibe.</strong>
@@ -137,7 +145,7 @@ export default function HomePage() {
               <span className="eyebrow"><Sparkles size={14} /> YOUR WORLD, YOUR VIBE</span>
               <h1>Good videos.<br /><em>Good energy.</em></h1>
               <p>Watch what you love. Discover creators. Share what inspires you.</p>
-              <button className="hero-btn" onClick={() => { setCategory("All"); setQuery(""); }}>
+              <button className="hero-btn" onClick={() => exploreVideos()}>
                 Explore videos <Play size={15} fill="currentColor" />
               </button>
             </div>
@@ -149,9 +157,9 @@ export default function HomePage() {
             </div>
           </section>
 
-          <div className="category-strip">
+          <div className="category-strip" id="videos">
             {categories.map((item) => (
-              <button key={item} onClick={() => setCategory(item)} className={`category-pill ${category === item ? "selected" : ""}`}>{item}</button>
+              <button key={item} onClick={() => setCategory(item === "Eporner" ? "Eporner" : item)} className={`category-pill ${category === item ? "selected" : ""}`}>{item}</button>
             ))}
           </div>
 
@@ -184,24 +192,15 @@ export default function HomePage() {
             <div className="empty-state"><Search size={30} /><h3>No videos found</h3><p>Try another search or category.</p><button onClick={() => { setQuery(""); setCategory("All"); }}>Clear filters</button></div>
           )}
 
-          <section className="shorts-section">
-            <div className="section-head"><div><span className="section-kicker"><Clapperboard size={15} /> QUICK MOMENTS</span><h2>Vibe Shorts</h2></div><span className="result-count">Coming soon</span></div>
-            <div className="shorts-row">
-              <div className="short-tile short-one"><span>🌇</span><b>Golden hour</b></div>
-              <div className="short-tile short-two"><span>🎸</span><b>Music moments</b></div>
-              <div className="short-tile short-three"><span>🚀</span><b>Big ideas</b></div>
-              <div className="short-tile short-four"><span>🏄</span><b>Adventure</b></div>
-            </div>
-          </section>
           <footer className="footer">Made for creators. Built for discovery. <span>✦</span> VibeTube</footer>
         </section>
       </div>
 
       <nav className="mobile-nav">
         <Link href="/"><Home size={20} /><span>Home</span></Link>
-        <button onClick={() => setCategory("All")}><Compass size={20} /><span>Explore</span></button>
+        <button onClick={() => exploreVideos()}><Compass size={20} /><span>Explore</span></button>
         <Link href="/studio"><Plus size={22} /><span>Create</span></Link>
-        <button onClick={() => setCategory("Music")}><Clapperboard size={20} /><span>Shorts</span></button>
+        <button onClick={() => exploreVideos("Eporner")}><Play size={20} /><span>Eporner</span></button>
         <Link href="/studio"><span className="mobile-avatar">R</span><span>You</span></Link>
       </nav>
     </main>

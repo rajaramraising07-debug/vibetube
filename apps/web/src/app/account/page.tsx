@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { Play } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 
@@ -29,7 +29,7 @@ export default function AccountPage() {
   }
 
   return <main className="account-page">
-    <Link href="/" className="account-brand"><Image src="/vibetube-logo.jpg" alt="" width={46} height={46}/><b>vibe<span>tube</span></b></Link>
+    <Link href="/" className="account-brand"><span className="account-brand-mark" aria-hidden="true"><Play size={21} fill="currentColor" /></span><b>vibe<span>tube</span></b></Link>
     <form className="account-card" onSubmit={submit}>
       <span className="section-kicker">WELCOME TO YOUR NEXT VIBE</span>
       <h1>{mode === "register" ? "Create your account" : "Welcome back"}</h1>

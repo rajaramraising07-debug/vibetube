@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="vibe" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffb18f" />
+      <stop offset="1" stop-color="#e98db2" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="url(#vibe)" />
+  <path d="M25 18.5c-1.1-.7-2.5.1-2.5 1.4v24.2c0 1.3 1.4 2.1 2.5 1.4l19.1-12.1c1-.6 1-2.1 0-2.7L25 18.5Z" fill="#28191e" />
+</svg>
