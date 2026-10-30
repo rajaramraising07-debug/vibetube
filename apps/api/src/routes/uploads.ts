@@ -10,7 +10,7 @@ import { pipeline } from "node:stream/promises";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { z } from "zod";
-import { r2, r2Ready } from "../lib/r2.js";
+import { objectPublicBaseUrl, r2, r2Ready } from "../lib/r2.js";
 import { requireAuth, type AuthRequest } from "../middleware/auth.js";
 
 const router = Router();
@@ -35,7 +35,7 @@ router.post("/video-url", requireAuth, async (req: AuthRequest, res, next) => {
 
     const ext = extensionFor(parsed.data.contentType);
     if (!r2Ready || !r2) {
-      if (!localStorageEnabled) return res.status(503).json({ error: "Video storage is not configured yet. Add the R2 environment variables." });
+      if (!localStorageEnabled) return res.status(503).json({ error: "Video storage is not configured yet. Add the object storage environment variables." });
       const fileId = `${randomUUID()}.${ext}`;
       const localUrl = `/api/uploads/local/${fileId}`;
       return res.json({ uploadUrl: localUrl, key: fileId, publicUrl: localUrl, storage: "local" });
@@ -49,7 +49,7 @@ router.post("/video-url", requireAuth, async (req: AuthRequest, res, next) => {
       ContentLength: parsed.data.size
     });
     const uploadUrl = await getSignedUrl(r2, command, { expiresIn: 600 });
-    res.json({ uploadUrl, key, publicUrl: `${process.env.R2_PUBLIC_BASE_URL!.replace(/\/$/, "")}/${key}` });
+    res.json({ uploadUrl, key, publicUrl: `${objectPublicBaseUrl!.replace(/\/$/, "")}/${key}` });
   } catch (error) { next(error); }
 });
 
