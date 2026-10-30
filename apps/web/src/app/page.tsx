@@ -33,6 +33,22 @@ const demoVideos: Video[] = [
 ];
 
 const categories = ["All", "Eporner", "Music", "Gaming", "Technology", "Education", "Lifestyle"];
+const epornerResources = [
+  ["Contact / support", "https://www.eporner.com/contact/"],
+  ["Advertisement", "https://www.eporner.com/advertisement/"],
+  ["FAQ", "https://www.eporner.com/faq/"],
+  ["Parental control", "https://www.eporner.com/parentalcontrol/"],
+  ["Terms of use", "https://www.eporner.com/terms/"],
+  ["Privacy Policy", "https://www.eporner.com/privacy/"],
+  ["Cookie Policy", "https://www.eporner.com/cookies/"],
+  ["2257 Statement", "https://www.eporner.com/statement2257/"],
+  ["DMCA / Copyright Claims", "https://www.eporner.com/dmca/"],
+  ["Content Removal", "https://www.eporner.com/content-removal/"],
+  ["EU DSA", "https://www.eporner.com/eu-dsa/"],
+  ["Law Enforcement", "https://www.eporner.com/law-enforcement/"],
+  ["API for webmasters", "https://www.eporner.com/api/v2/"],
+  ["RSS Feed", "https://www.eporner.com/feed.rss"]
+];
 
 export default function HomePage() {
   const [query, setQuery] = useState("");
@@ -193,6 +209,15 @@ export default function HomePage() {
           )}
 
           <footer className="footer">Made for creators. Built for discovery. <span>✦</span> VibeTube</footer>
+          <nav className="source-resources" aria-label="Eporner resources">
+            <h2>Eporner resources</h2>
+            <p>These links go to Eporner. Its policies and support apply to its service.</p>
+            <div className="source-resource-links">
+              {epornerResources.map(([label, href]) => (
+                <a key={label} href={href} target="_blank" rel="noopener noreferrer nofollow">{label}</a>
+              ))}
+            </div>
+          </nav>
         </section>
       </div>
 
