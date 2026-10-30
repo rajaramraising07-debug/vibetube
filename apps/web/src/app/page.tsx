@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
-  Bell, Compass, Flame, Gamepad2, Home, Menu, Music2, Play,
-  Plus, Search, Sparkles, X, GraduationCap
+  Bell, Compass, Flame, Home, Menu, Play, Plus, Search, Sparkles, X
 } from "lucide-react";
 
 type Video = {
@@ -32,7 +31,12 @@ const demoVideos: Video[] = [
   { id: "8", title: "A collection of sounds for slow mornings", creator: "Sunday Stereo", views: "980K views", age: "6 days ago", category: "Music", duration: "32:15", emoji: "🎵", theme: "pink" }
 ];
 
-const categories = ["All", "Eporner", "Music", "Gaming", "Technology", "Education", "Lifestyle"];
+const epornerCategoryGroups = [
+  { label: "Popular", items: ["Japanese", "Anal", "POV", "Indian", "MILF", "BBW", "Pinay"] },
+  { label: "Categories A–Z", items: ["Amateur", "Asian", "ASMR", "BDSM", "Big Ass", "Big Dick", "Big Tits", "Cosplay", "Creampie", "Cuckold", "Ebony", "Footjob", "Group Sex", "Hardcore", "Homemade", "Indonesia", "Interracial", "Latina", "Massage", "Mature", "Orgy", "Redhead", "Solo girls", "Threesome", "Vintage"] },
+  { label: "Orientation", items: ["Gay", "Lesbian", "Transgender"] },
+  { label: "Formats", items: ["4K Ultra HD", "HD 1080p", "60 FPS", "VR Porn"] }
+];
 const epornerResources = [
   ["Contact / support", "https://www.eporner.com/contact/"],
   ["Advertisement", "https://www.eporner.com/advertisement/"],
@@ -52,7 +56,10 @@ const epornerResources = [
 
 export default function HomePage() {
   const [query, setQuery] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [category, setCategory] = useState("All");
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [videos, setVideos] = useState<Video[]>(demoVideos);
   const [loadingVideos, setLoadingVideos] = useState(true);
@@ -60,19 +67,44 @@ export default function HomePage() {
   function exploreVideos(nextCategory = "All") {
     setCategory(nextCategory);
     setQuery("");
+    setSearchTerm("");
+    setPage(1);
     setMenuOpen(false);
     window.requestAnimationFrame(() => {
       document.getElementById("videos")?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }
 
+  function selectCategory(nextCategory: string) {
+    setCategory(nextCategory);
+    setQuery("");
+    setSearchTerm("");
+    setPage(1);
+  }
+
   useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setSearchTerm(query.trim());
+      setPage(1);
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [query]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoadingVideos(true);
+    const externalParams = new URLSearchParams({ category, page: String(page) });
+    if (searchTerm) externalParams.set("q", searchTerm);
+    const externalUrl = `/api/external-videos?${externalParams}`;
+    if (page === 1) setHasMore(false);
     Promise.allSettled([
-      fetch("/api/videos", { credentials: "include" }).then((response) => response.ok ? response.json() : { videos: [] }),
-      fetch("/api/external-videos", { credentials: "include" }).then((response) => response.ok ? response.json() : { videos: [] })
+      fetch("/api/videos", { credentials: "include", signal: controller.signal }).then((response) => response.ok ? response.json() : { videos: [] }),
+      fetch(externalUrl, { credentials: "include", signal: controller.signal }).then((response) => response.ok ? response.json() : { videos: [] })
     ]).then(([savedResult, externalResult]) => {
+        if (controller.signal.aborted) return;
         const saved = savedResult.status === "fulfilled" ? savedResult.value.videos || [] : [];
-        const external = externalResult.status === "fulfilled" ? externalResult.value.videos || [] : [];
+        const externalData = externalResult.status === "fulfilled" ? externalResult.value : { videos: [], hasMore: false };
+        const external = externalData.videos || [];
         const liveVideos: Video[] = saved.map((v: any) => ({
           id: v.id,
           title: v.title,
@@ -90,24 +122,31 @@ export default function HomePage() {
           creator: v.creator || "Eporner",
           views: `${Number(v.views || 0).toLocaleString()} views`,
           age: "External",
-          category: "Adult",
+          category: v.category || "Eporner",
           duration: `${Math.floor(Number(v.duration || 0) / 60)}:${String(Number(v.duration || 0) % 60).padStart(2, "0")}`,
           emoji: "▶",
           theme: "pink",
           thumbnailUrl: v.thumbnailUrl,
           externalUrl: v.externalUrl
         }));
-        if (liveVideos.length || externalVideos.length) setVideos([...liveVideos, ...externalVideos]);
+        setVideos((current) => page === 1 ? [...liveVideos, ...externalVideos] : [...current, ...externalVideos]);
+        setHasMore(externalData.hasMore === true);
       })
       .catch(() => {})
-      .finally(() => setLoadingVideos(false));
-  }, []);
+      .finally(() => { if (!controller.signal.aborted) setLoadingVideos(false); });
+    return () => controller.abort();
+  }, [category, page, searchTerm]);
 
   const filtered = useMemo(() => videos.filter((video) => {
-    const matchesCategory = category === "All" || (category === "Eporner" ? Boolean(video.externalUrl) : video.category === category);
+    const matchesCategory = video.externalUrl
+      ? category === "All" || category === "Eporner" || video.category === category
+      : category === "All" || video.category === category;
     const haystack = `${video.title} ${video.creator} ${video.category}`.toLowerCase();
-    return matchesCategory && haystack.includes(query.toLowerCase());
-  }), [category, query, videos]);
+    const matchesQuery = video.externalUrl
+      ? !query.trim() || query.trim() === searchTerm
+      : haystack.includes(query.toLowerCase());
+    return matchesCategory && matchesQuery;
+  }), [category, query, searchTerm, videos]);
 
   return (
     <main className="app-shell">
@@ -124,7 +163,7 @@ export default function HomePage() {
 
         <label className="searchbar">
           <Search size={18} />
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search videos, creators..." />
+          <input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="Search Eporner videos..." />
           {query && <button onClick={() => setQuery("")} aria-label="Clear search"><X size={16} /></button>}
         </label>
 
@@ -143,10 +182,14 @@ export default function HomePage() {
             <button className={`side-link ${category === "Eporner" ? "active" : ""}`} onClick={() => exploreVideos("Eporner")}><Play size={19} /> Eporner</button>
           </nav>
           <div className="side-divider" />
-          <p className="side-label">CATEGORIES</p>
-          <button className={`side-link ${category === "Music" ? "active" : ""}`} onClick={() => exploreVideos("Music")}><Music2 size={19} /> Music</button>
-          <button className={`side-link ${category === "Gaming" ? "active" : ""}`} onClick={() => exploreVideos("Gaming")}><Gamepad2 size={19} /> Gaming</button>
-          <button className={`side-link ${category === "Education" ? "active" : ""}`} onClick={() => exploreVideos("Education")}><GraduationCap size={19} /> Learning</button>
+          {epornerCategoryGroups.map((group) => (
+            <div className="side-category-group" key={group.label}>
+              <p className="side-label">{group.label}</p>
+              {group.items.map((item) => (
+                <button key={item} className={`side-link ${category === item ? "active" : ""}`} onClick={() => exploreVideos(item)}>{item}</button>
+              ))}
+            </div>
+          ))}
           <div className="sidebar-note">
             <Sparkles size={20} />
             <strong>Find your vibe.</strong>
@@ -173,14 +216,25 @@ export default function HomePage() {
             </div>
           </section>
 
-          <div className="category-strip" id="videos">
-            {categories.map((item) => (
-              <button key={item} onClick={() => setCategory(item === "Eporner" ? "Eporner" : item)} className={`category-pill ${category === item ? "selected" : ""}`}>{item}</button>
+          <div className="category-browser" id="videos">
+            <div className="category-strip">
+              <button onClick={() => selectCategory("All")} className={`category-pill ${category === "All" ? "selected" : ""}`}>All</button>
+              <button onClick={() => selectCategory("Eporner")} className={`category-pill ${category === "Eporner" ? "selected" : ""}`}>Eporner</button>
+            </div>
+            {epornerCategoryGroups.map((group) => (
+              <section className="category-group" key={group.label}>
+                <h3>{group.label}</h3>
+                <div className="category-strip">
+                  {group.items.map((item) => (
+                    <button key={item} onClick={() => selectCategory(item)} className={`category-pill ${category === item ? "selected" : ""}`}>{item}</button>
+                  ))}
+                </div>
+              </section>
             ))}
           </div>
 
           <div className="section-head">
-            <div><span className="section-kicker"><Flame size={15} /> PICKED FOR YOU</span><h2>{query ? "Search results" : category === "All" ? "Trending right now" : category}</h2></div>
+            <div><span className="section-kicker"><Flame size={15} /> {category === "All" || category === "Eporner" ? "EPORNER VIDEOS" : "EPORNER CATEGORY"}</span><h2>{query ? "Search results" : category === "All" ? "Trending right now" : category === "Eporner" ? "All videos" : category}</h2></div>
             <span className="result-count">{loadingVideos ? "Loading…" : `${filtered.length} videos`}</span>
           </div>
 
@@ -188,15 +242,15 @@ export default function HomePage() {
             <div className="video-grid">
               {filtered.map((video) => (
                 <article className="video-card" key={video.id}>
-                  <a href={video.externalUrl || `/watch/${video.id}`} target={video.externalUrl ? "_blank" : undefined} rel={video.externalUrl ? "noopener noreferrer nofollow" : undefined} className={`thumbnail thumb-${video.theme}`} style={video.thumbnailUrl ? { backgroundImage: `linear-gradient(#0001,#0004), url("${video.thumbnailUrl}")` } : undefined}>
+                  <Link href={video.externalUrl ? `/watch/${encodeURIComponent(video.id)}?title=${encodeURIComponent(video.title)}` : `/watch/${video.id}`} className={`thumbnail thumb-${video.theme}`} style={video.thumbnailUrl ? { backgroundImage: `linear-gradient(#0001,#0004), url("${video.thumbnailUrl}")` } : undefined}>
                     <span className="thumb-emoji">{video.emoji}</span>
                     <span className="play-hover"><Play size={21} fill="white" /></span>
                     <span className="duration">{video.duration}</span>
-                  </a>
+                  </Link>
                   <div className="video-meta">
                     <div className="creator-avatar">{video.creator.slice(0, 1)}</div>
                     <div className="video-copy">
-                      <a href={video.externalUrl || `/watch/${video.id}`} target={video.externalUrl ? "_blank" : undefined} rel={video.externalUrl ? "noopener noreferrer nofollow" : undefined} className="video-title">{video.title}</a>
+                      <Link href={video.externalUrl ? `/watch/${encodeURIComponent(video.id)}?title=${encodeURIComponent(video.title)}` : `/watch/${video.id}`} className="video-title">{video.title}</Link>
                       <p>{video.creator}</p><small>{video.views} · {video.age}</small>
                     </div>
                     <button className="more-btn" aria-label={`More options for ${video.title}`}>⋮</button>
@@ -207,6 +261,8 @@ export default function HomePage() {
           ) : (
             <div className="empty-state"><Search size={30} /><h3>No videos found</h3><p>Try another search or category.</p><button onClick={() => { setQuery(""); setCategory("All"); }}>Clear filters</button></div>
           )}
+
+          {hasMore && <div className="load-more-wrap"><button className="load-more-btn" disabled={loadingVideos} onClick={() => setPage((current) => current + 1)}>{loadingVideos ? "Loading…" : "Load more videos"}</button></div>}
 
           <footer className="footer">Made for creators. Built for discovery. <span>✦</span> VibeTube</footer>
           <nav className="source-resources" aria-label="Eporner resources">

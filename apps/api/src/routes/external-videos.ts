@@ -2,7 +2,50 @@ import { Router } from "express";
 
 const router = Router();
 const API_URL = "https://www.eporner.com/api/v2/video/search/";
-const underageCoded = /\b(?:teen(?:s|age|aged)?|underage|under[\s-]?18|minor|schoolgirl|schoolboy|young\s+(?:girl|boy)|barely\s+legal|jailbait|loli|shota|preteen|child|kids?)\b/i;
+const categoryQueries: Record<string, string> = {
+  All: "all",
+  Eporner: "all",
+  Amateur: "amateur",
+  Asian: "asian",
+  ASMR: "asmr",
+  BDSM: "bdsm",
+  "Big Ass": "big ass",
+  "Big Dick": "big dick",
+  "Big Tits": "big tits",
+  Cosplay: "cosplay",
+  Creampie: "creampie",
+  Cuckold: "cuckold",
+  Ebony: "ebony",
+  Footjob: "footjob",
+  "Group Sex": "group sex",
+  Hardcore: "hardcore",
+  Homemade: "homemade",
+  Indonesia: "indonesia",
+  Interracial: "interracial",
+  Latina: "latina",
+  Massage: "massage",
+  Mature: "mature",
+  Orgy: "orgy",
+  Redhead: "redhead",
+  "Solo girls": "solo girls",
+  Threesome: "threesome",
+  Vintage: "vintage",
+  Japanese: "japanese",
+  Anal: "anal",
+  POV: "pov",
+  Indian: "indian",
+  MILF: "milf",
+  BBW: "bbw",
+  Pinay: "pinay",
+  Gay: "gay",
+  Lesbian: "lesbian",
+  Transgender: "transgender",
+  "4K Ultra HD": "4k",
+  "HD 1080p": "1080p",
+  "60 FPS": "60 fps",
+  "VR Porn": "vr"
+};
+const underageCoded = /\b(?:teen(?:s|age|aged)?|underage|under[\s-]?18|minor|school(?:girl|boy|kid)?s?|student(?:s)?|young|barely\s+legal|jailbait|loli|shota|preteen|child(?:ren)?|kids?|daughter(?:s)?|son(?:s)?|step[\s-]?(?:daughter|son|mom|mother|sister|brother))\b/i;
 const safeId = /^[A-Za-z0-9_-]{4,40}$/;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -21,9 +64,14 @@ function safeHttpsUrl(value: unknown, allowedHost: (host: string) => boolean) {
 
 router.get("/", async (req, res) => {
   const page = Math.max(1, Math.min(100, Number.parseInt(String(req.query.page ?? "1"), 10) || 1));
+  const category = String(req.query.category ?? "All");
+  const categoryQuery = categoryQueries[category];
+  if (!categoryQuery) return res.status(400).json({ error: "Unsupported video category." });
+  const search = typeof req.query.q === "string" ? req.query.q.trim().slice(0, 100) : "";
+  const query = [categoryQuery === "all" ? "" : categoryQuery, search].filter(Boolean).join(" ") || "all";
   const params = new URLSearchParams({
-    query: "all",
-    per_page: "20",
+    query,
+    per_page: "30",
     page: String(page),
     order: "most-popular",
     format: "json"
@@ -38,6 +86,9 @@ router.get("/", async (req, res) => {
 
     const payload: unknown = await response.json();
     const items = isRecord(payload) && Array.isArray(payload.videos) ? payload.videos : [];
+    const totalPages = isRecord(payload) && typeof payload.total_pages === "number" && Number.isFinite(payload.total_pages)
+      ? Math.max(1, Math.floor(payload.total_pages))
+      : page;
     const videos = items.flatMap((item) => {
       if (!isRecord(item)) return [];
       const id = item.id;
@@ -59,6 +110,7 @@ router.get("/", async (req, res) => {
         id: `eporner_${id}`,
         title: title.slice(0, 180),
         creator: "Eporner",
+        category: category === "All" || category === "Eporner" ? "Eporner" : category,
         views,
         added,
         duration,
@@ -68,7 +120,7 @@ router.get("/", async (req, res) => {
       }];
     });
 
-    res.set("Cache-Control", "private, max-age=300").json({ videos });
+    res.set("Cache-Control", "private, max-age=300").json({ videos, page, totalPages, hasMore: page < totalPages });
   } catch {
     res.status(502).json({ error: "Could not load videos from the external source." });
   }
